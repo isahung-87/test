@@ -3,367 +3,420 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>英文單字圈圈叉叉 - 運動與健康篇</title>
+    <title>英文單字搶地盤對戰 (Tic-Tac-Toe)</title>
     <style>
         :root {
-            --primary-color: #2c3e50;
-            --accent-color: #3498db;
-            --bg-color: #f0f2f5;
+            --p1-color: #3498db; /* Player 1 (O) Blue */
+            --p2-color: #e74c3c; /* Player 2 (X) Red */
+            --bg-color: #f4f7f6;
             --cell-bg: #ffffff;
-            --text-color: #333;
+            --text-main: #2c3e50;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Microsoft JhengHei', 'Segoe UI', sans-serif;
             background-color: var(--bg-color);
-            color: var(--text-color);
+            color: var(--text-main);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
             margin: 0;
+            padding: 10px;
         }
 
         h1 {
-            color: var(--primary-color);
-            margin-bottom: 10px;
-            font-size: 2rem;
+            margin-bottom: 5px;
+            font-size: 1.8rem;
+            color: var(--text-main);
             text-align: center;
         }
 
-        .status {
-            font-size: 1.2rem;
-            margin-bottom: 20px;
-            font-weight: bold;
-            color: var(--accent-color);
+        .subtitle {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-bottom: 15px;
         }
 
-        /* 棋盤設定 */
+        .status-bar {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            background: white;
+            border-radius: 50px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .player-indicator {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        /* 棋盤樣式 */
         .board {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
+            gap: 12px;
             background-color: #bdc3c7;
-            padding: 10px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 12px;
+            border-radius: 15px;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+            max-width: 400px;
+            width: 100%;
         }
 
         .cell {
             background-color: var(--cell-bg);
-            width: 120px;
-            height: 120px;
+            aspect-ratio: 1 / 1;
             display: flex;
             align-items: center;
             justify-content: center;
             text-align: center;
-            font-size: 0.9rem;
+            font-size: 1rem;
+            font-weight: 600;
             padding: 5px;
             cursor: pointer;
-            border-radius: 5px;
-            transition: all 0.3s ease;
+            border-radius: 8px;
+            transition: transform 0.2s, background 0.2s;
             position: relative;
-            flex-direction: column;
+            user-select: none;
+            word-break: break-word;
+            color: #34495e;
         }
 
-        .cell:hover {
-            background-color: #e8f6f3;
+        .cell:hover:not(.taken) {
+            transform: scale(1.02);
+            background-color: #ecf0f1;
         }
 
         .cell.taken {
             cursor: default;
-            background-color: #fff;
         }
 
-        .cell .hint {
-            pointer-events: none;
-            color: #555;
-            font-weight: 500;
+        /* 標記樣式 (覆蓋在文字上) */
+        .cell.taken span.word-text {
+            opacity: 0.2; /* 淡化單字 */
         }
 
         .cell .mark {
-            font-size: 3rem;
-            font-weight: bold;
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            font-size: 4rem;
+            font-weight: 800;
+            line-height: 1;
         }
 
-        .mark.x { color: #e74c3c; opacity: 0.8; }
-        .mark.o { color: #2ecc71; opacity: 0.8; }
+        .mark.o { color: var(--p1-color); }
+        .mark.x { color: var(--p2-color); }
 
         /* 重新開始按鈕 */
         .restart-btn {
-            margin-top: 25px;
-            padding: 10px 25px;
+            margin-top: 30px;
+            padding: 12px 30px;
             font-size: 1rem;
-            background-color: var(--primary-color);
+            background-color: var(--text-main);
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             transition: background 0.3s;
         }
+        .restart-btn:hover { background-color: #1a252f; }
 
-        .restart-btn:hover {
-            background-color: #34495e;
-        }
-
-        /* 答題視窗 (Modal) */
+        /* 選擇題模組 (Modal) */
         .modal-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.6);
             display: none;
             justify-content: center;
             align-items: center;
             z-index: 1000;
+            backdrop-filter: blur(3px);
         }
 
         .modal-box {
             background: white;
-            padding: 30px;
-            border-radius: 10px;
+            padding: 25px;
+            border-radius: 15px;
             text-align: center;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.3);
             width: 90%;
-            max-width: 400px;
+            max-width: 380px;
+            animation: popIn 0.3s ease;
         }
 
-        .modal-question {
-            font-size: 1.2rem;
-            margin-bottom: 15px;
-            color: var(--primary-color);
+        @keyframes popIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
         }
 
-        .modal-input {
-            width: 80%;
-            padding: 10px;
-            font-size: 1.1rem;
-            margin-bottom: 15px;
-            border: 2px solid #ddd;
-            border-radius: 5px;
+        .question-word {
+            font-size: 1.8rem;
+            color: var(--text-main);
+            margin-bottom: 20px;
+            font-weight: bold;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
         }
 
-        .modal-btn {
-            padding: 10px 20px;
-            background-color: var(--accent-color);
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
+        .options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .option-btn {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 8px;
             font-size: 1rem;
-        }
-        
-        .modal-close {
-            margin-top: 10px;
-            background-color: #95a5a6;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #555;
         }
 
-        @media (max-width: 500px) {
-            .cell {
-                width: 90px;
-                height: 90px;
-                font-size: 0.8rem;
-            }
+        .option-btn:hover {
+            border-color: var(--p1-color);
+            background: #f0f8ff;
+            color: var(--p1-color);
+        }
+
+        /* 答錯時的震動動畫 */
+        .shake {
+            animation: shake 0.5s;
+        }
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            50% { transform: translateX(10px); }
+            75% { transform: translateX(-10px); }
+            100% { transform: translateX(0); }
+        }
+
+        @media (max-width: 400px) {
+            .cell { font-size: 0.85rem; }
+            .cell .mark { font-size: 3rem; }
         }
     </style>
 </head>
 <body>
 
-    <h1>單字圈圈叉叉 (Tic-Tac-Toe)</h1>
-    <div class="status" id="status">玩家 X 的回合</div>
+    <h1>英文單字搶地盤</h1>
+    <div class="subtitle">點擊單字 ➜ 答對中文 ➜ 佔領地盤</div>
+    
+    <div class="status-bar">
+        <span class="player-indicator" id="playerColor" style="background: var(--p1-color);"></span>
+        <span id="statusText">Player 1 (O) 回合</span>
+    </div>
 
     <div class="board" id="board">
         </div>
 
-    <button class="restart-btn" onclick="initGame()">重新開始遊戲</button>
+    <button class="restart-btn" onclick="initGame()">重新洗牌 / 開始新局</button>
 
     <div class="modal-overlay" id="modal">
-        <div class="modal-box">
-            <h3 id="modalTitle">請翻譯這個單字：</h3>
-            <p class="modal-question" id="modalQuestion">--</p>
-            <input type="text" class="modal-input" id="answerInput" placeholder="輸入英文單字" autocomplete="off">
-            <br>
-            <button class="modal-btn" onclick="checkAnswer()">送出答案</button>
-            <button class="modal-btn modal-close" onclick="closeModal()">取消</button>
+        <div class="modal-box" id="modalBox">
+            <div class="question-word" id="modalWord">English</div>
+            <div class="options-container" id="optionsContainer">
+                </div>
+            <div id="modalMsg" style="margin-top:10px; font-weight:bold; height: 1.2em; color: #e74c3c;"></div>
         </div>
     </div>
 
 <script>
     // ==========================================
-    // 1. 資料庫區：可在此替換或新增單字
+    // 1. 單字資料庫 (包含中文意思)
     // ==========================================
     const wordBank = [
-        { word: "athlete", hint: "n. [U] 運動員" },
-        { word: "athletic", hint: "adj. 運動的" },
-        { word: "muscle", hint: "n. [U] 肌肉" },
-        { word: "workout", hint: "n. [C] 運動，訓練" },
-        { word: "routine", hint: "n. [C] 例行公事，慣例" },
-        { word: "peak", hint: "adj. 最佳的，巔峰的" },
-        { word: "peak", hint: "n. [C] 巔峰" },
-        { word: "peak", hint: "vi. 達到最高點" },
-        { word: "recovery", hint: "n. [U] (身體健康) 恢復，痊癒" },
-        { word: "recover", hint: "vi. 恢復，復原" },
-        { word: "injury", hint: "n. [C] 傷害，受傷" },
-        { word: "injure", hint: "vt. 傷害，使受傷" },
-        { word: "stiff", hint: "adj. (身體部位) 僵硬的" },
-        { word: "stiff", hint: "adj. 堅硬的" },
-        { word: "Western", hint: "adj. 西方國家的" },
-        { word: "western", hint: "adj. 西部的" },
-        { word: "bandage", hint: "n. [C] 繃帶" },
-        { word: "bandage", hint: "vt. 用繃帶包紮" },
-        { word: "swelling", hint: "n. [U] 腫脹，腫塊" },
-        { word: "swell", hint: "vi. 腫脹" },
-        { word: "insert", hint: "vt. 插入，放進" },
-        { word: "needle", hint: "n. [C] (醫療/縫紉) 針" },
-        { word: "suck", hint: "vt. 抽出 (氣、液體)" },
-        { word: "suck", hint: "vi. 吸" },
-        { word: "smooth", hint: "adj. 順利的，流暢的" },
-        { word: "smooth", hint: "adj. 平滑的，光滑的" },
-        { word: "smooth", hint: "vt. 撫平，使平整" },
-        { word: "doubt", hint: "n. [U] 疑慮，懷疑" },
-        { word: "doubt", hint: "vt. 懷疑，不確定" },
-        { word: "doubtful", hint: "adj. 懷疑的，有疑慮的" },
-        { word: "circulation", hint: "n. [U] (血液) 循環" },
-        { word: "circulate", hint: "vi. 循環，流動" },
-        { word: "circular", hint: "adj. 圓形的，環形的" },
-        { word: "reveal", hint: "vt. 展現 / 揭露" },
-        { word: "perform", hint: "vt. 執行 / 表演" },
-        { word: "performance", hint: "n. [C] 表演，演出" },
-        { word: "stimulate", hint: "vt. 促進，激發" },
-        { word: "relieve", hint: "vt. 紓解，解除" },
-        { word: "relief", hint: "n. [U] 寬慰，放心" },
-        { word: "competition", hint: "n. [U] 競爭" },
-        { word: "compete", hint: "vi. 競爭，對抗" },
-        { word: "competitive", hint: "adj. 競爭的，競賽的" },
-        { word: "shorten", hint: "vt. 縮短，變短" },
-        { word: "speed up something", hint: "phr. 使…加速 (含受詞)" },
-        { word: "stem from something", hint: "phr. 由…造成 (含受詞)" },
-        { word: "result in", hint: "phr. 導致…發生" },
-        { word: "engage in something", hint: "phr. 參與… (含受詞)" },
-        { word: "turn to", hint: "phr. 求助於…" },
-        { word: "at home", hint: "phr. 在家裡" },
-        { word: "make the headlines", hint: "phr. 成為頭條 (make ...)" },
-        { word: "grab the headlines", hint: "phr. 成為頭條 (grab ...)" },
-        { word: "hit the headlines", hint: "phr. 成為頭條 (hit ...)" }
+        { word: "athlete", mean: "運動員" },
+        { word: "athletic", mean: "運動的" },
+        { word: "muscle", mean: "肌肉" },
+        { word: "workout", mean: "運動，訓練" },
+        { word: "routine", mean: "例行公事" },
+        { word: "peak", mean: "巔峰 / 最佳的" },
+        { word: "recovery", mean: "恢復，痊癒" },
+        { word: "recover", mean: "恢復，復原" },
+        { word: "injury", mean: "傷害，受傷" },
+        { word: "injure", mean: "傷害" },
+        { word: "stiff", mean: "僵硬的 / 堅硬的" },
+        { word: "Western", mean: "西方國家的" },
+        { word: "bandage", mean: "繃帶 / 包紮" },
+        { word: "swelling", mean: "腫脹" },
+        { word: "swell", mean: "腫脹" },
+        { word: "insert", mean: "插入，放進" },
+        { word: "needle", mean: "針" },
+        { word: "suck", mean: "吸 / 抽出" },
+        { word: "smooth", mean: "滑順的 / 撫平" },
+        { word: "doubt", mean: "懷疑" },
+        { word: "doubtful", mean: "懷疑的" },
+        { word: "circulation", mean: "循環" },
+        { word: "circulate", mean: "循環，流動" },
+        { word: "circular", mean: "圓形的" },
+        { word: "reveal", mean: "揭露 / 展現" },
+        { word: "perform", mean: "執行 / 表演" },
+        { word: "performance", mean: "表演，演出" },
+        { word: "stimulate", mean: "促進，激發" },
+        { word: "relieve", mean: "紓解，解除" },
+        { word: "relief", mean: "寬慰，放心" },
+        { word: "competition", mean: "競爭" },
+        { word: "compete", mean: "競爭，對抗" },
+        { word: "competitive", mean: "競爭的" },
+        { word: "shorten", mean: "縮短" },
+        { word: "speed up", mean: "使…加速" },
+        { word: "stem from", mean: "由…造成" },
+        { word: "result in", mean: "導致…發生" },
+        { word: "engage in", mean: "參與…" },
+        { word: "turn to", mean: "求助於…" },
+        { word: "at home", mean: "在家裡" },
+        { word: "make headlines", mean: "成為頭條新聞" }
     ];
 
     // ==========================================
-    // 2. 遊戲變數與邏輯
+    // 2. 遊戲邏輯變數
     // ==========================================
-    let boardState = ["", "", "", "", "", "", "", "", ""];
-    let currentWords = []; // 存放當前盤面的9個單字物件
-    let currentPlayer = "X";
+    let boardState = Array(9).fill(null); // 存放佔領者 'O' 或 'X'，未佔領為 null
+    let boardWords = []; // 存放當前盤面上的 9 個單字物件
+    let currentPlayer = "O"; // O = Player 1, X = Player 2
     let gameActive = true;
-    let selectedCellIndex = null;
+    let targetCellIndex = null; // 當前正在作答的格子索引
 
-    const statusDisplay = document.getElementById('status');
+    const statusText = document.getElementById('statusText');
+    const playerColor = document.getElementById('playerColor');
     const boardElement = document.getElementById('board');
     const modal = document.getElementById('modal');
-    const modalQuestion = document.getElementById('modalQuestion');
-    const answerInput = document.getElementById('answerInput');
+    const modalBox = document.getElementById('modalBox');
+    const modalWord = document.getElementById('modalWord');
+    const optionsContainer = document.getElementById('optionsContainer');
+    const modalMsg = document.getElementById('modalMsg');
 
     const winningConditions = [
-        [0, 1, 2], [3, 4, 5], [6, 7, 8], // 橫向
-        [0, 3, 6], [1, 4, 7], [2, 5, 8], // 直向
-        [0, 4, 8], [2, 4, 6]             // 斜向
+        [0, 1, 2], [3, 4, 5], [6, 7, 8],
+        [0, 3, 6], [1, 4, 7], [2, 5, 8],
+        [0, 4, 8], [2, 4, 6]
     ];
 
-    // 洗牌函數 (Fisher-Yates Shuffle)
+    // 洗牌函數
     function shuffle(array) {
         let currentIndex = array.length, randomIndex;
         while (currentIndex != 0) {
             randomIndex = Math.floor(Math.random() * currentIndex);
             currentIndex--;
-            [array[currentIndex], array[randomIndex]] = [
-                array[randomIndex], array[currentIndex]];
+            [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
         }
         return array;
     }
 
     // 初始化遊戲
     function initGame() {
-        boardState = ["", "", "", "", "", "", "", "", ""];
+        boardState = Array(9).fill(null);
         gameActive = true;
-        currentPlayer = "X";
-        statusDisplay.innerText = `玩家 ${currentPlayer} 的回合`;
-        
-        // 從題庫隨機選9個字
-        const shuffledBank = shuffle([...wordBank]); // 複製並洗牌
-        currentWords = shuffledBank.slice(0, 9);
+        currentPlayer = "O";
+        updateStatus();
+
+        // 隨機選 9 個字上場
+        const shuffledBank = shuffle([...wordBank]);
+        boardWords = shuffledBank.slice(0, 9);
 
         renderBoard();
         closeModal();
     }
 
+    // 更新狀態列
+    function updateStatus() {
+        if (!gameActive) return;
+        if (currentPlayer === "O") {
+            statusText.innerText = "Player 1 (O) 回合";
+            playerColor.style.background = "var(--p1-color)";
+        } else {
+            statusText.innerText = "Player 2 (X) 回合";
+            playerColor.style.background = "var(--p2-color)";
+        }
+    }
+
     // 渲染棋盤
     function renderBoard() {
         boardElement.innerHTML = "";
-        boardState.forEach((cell, index) => {
-            const cellElement = document.createElement('div');
-            cellElement.classList.add('cell');
+        boardWords.forEach((item, index) => {
+            const cell = document.createElement('div');
+            cell.classList.add('cell');
             
-            if (cell !== "") {
-                cellElement.classList.add('taken');
-                // 顯示 O 或 X
-                const mark = document.createElement('span');
-                mark.classList.add('mark', cell.toLowerCase());
-                mark.innerText = cell;
-                cellElement.appendChild(mark);
+            // 顯示單字
+            const textSpan = document.createElement('span');
+            textSpan.classList.add('word-text');
+            textSpan.innerText = item.word;
+            cell.appendChild(textSpan);
+
+            // 若已被佔領，加上標記
+            if (boardState[index]) {
+                cell.classList.add('taken');
+                const mark = document.createElement('div');
+                mark.classList.add('mark', boardState[index].toLowerCase());
+                mark.innerText = boardState[index];
+                cell.appendChild(mark);
             } else {
-                // 顯示中文提示
-                const hint = document.createElement('div');
-                hint.classList.add('hint');
-                hint.innerText = currentWords[index].hint;
-                cellElement.appendChild(hint);
-                
-                // 綁定點擊事件
-                cellElement.addEventListener('click', () => handleCellClick(index));
+                // 只有未佔領的格子可點擊
+                cell.addEventListener('click', () => handleCellClick(index));
             }
-            boardElement.appendChild(cellElement);
+
+            boardElement.appendChild(cell);
         });
     }
 
-    // 處理格子點擊
+    // 處理點擊格子 -> 跳出題目
     function handleCellClick(index) {
-        if (!gameActive || boardState[index] !== "") return;
-        
-        selectedCellIndex = index;
-        openModal(currentWords[index].hint);
+        if (!gameActive || boardState[index]) return;
+        targetCellIndex = index;
+        showQuestion(boardWords[index]);
     }
 
-    // 開啟答題視窗
-    function openModal(questionText) {
+    // 顯示題目與選項 (1 正解 + 2 干擾)
+    function showQuestion(targetObj) {
         modal.style.display = 'flex';
-        modalQuestion.innerText = questionText;
-        answerInput.value = "";
-        answerInput.focus();
+        modalWord.innerText = targetObj.word;
+        modalMsg.innerText = "";
+        modalBox.classList.remove('shake');
+        optionsContainer.innerHTML = "";
+
+        // 產生干擾選項 (從題庫中隨機找不是正確答案的)
+        const distractors = wordBank
+            .filter(w => w.word !== targetObj.word)
+            .sort(() => 0.5 - Math.random())
+            .slice(0, 2);
+
+        // 組合並洗牌選項
+        const options = shuffle([targetObj, ...distractors]);
+
+        options.forEach(opt => {
+            const btn = document.createElement('div');
+            btn.classList.add('option-btn');
+            btn.innerText = opt.mean;
+            
+            // 判斷是否正確
+            if (opt.word === targetObj.word) {
+                btn.onclick = () => handleAnswer(true);
+            } else {
+                btn.onclick = () => handleAnswer(false);
+            }
+            optionsContainer.appendChild(btn);
+        });
     }
 
-    // 關閉答題視窗
-    function closeModal() {
-        modal.style.display = 'none';
-        selectedCellIndex = null;
-    }
-
-    // 檢查答案
-    function checkAnswer() {
-        if (selectedCellIndex === null) return;
-
-        const userAnswer = answerInput.value.trim().toLowerCase();
-        const correctAnswer = currentWords[selectedCellIndex].word.toLowerCase();
-
-        // 寬鬆判定：如果正確答案包含 user 輸入的內容 (針對片語的特殊狀況)
-        // 嚴格判定：完全相等
-        if (userAnswer === correctAnswer) {
-            // 答對
-            boardState[selectedCellIndex] = currentPlayer;
+    // 處理回答結果
+    function handleAnswer(isCorrect) {
+        if (isCorrect) {
+            // 答對：佔領格子
+            boardState[targetCellIndex] = currentPlayer;
             renderBoard();
             checkResult();
             if (gameActive) {
@@ -371,51 +424,47 @@
             }
             closeModal();
         } else {
-            // 答錯
-            alert(`答錯了！\n正確答案是：${currentWords[selectedCellIndex].word}\n請再試一次或換人作答。`);
-            // 這裡選擇不關閉視窗，讓學生可以重試。
-            // 若要嚴格模式 (答錯換人)，可註解掉上一行並執行 switchPlayer() + closeModal();
-            answerInput.value = "";
-            answerInput.focus();
+            // 答錯：懲罰機制
+            modalMsg.innerText = "答錯了！回合強制結束！";
+            modalBox.classList.add('shake');
+            
+            // 延遲 1 秒後換手並關閉
+            setTimeout(() => {
+                switchPlayer();
+                closeModal();
+            }, 1200);
         }
     }
 
-    // 支援 Enter 鍵送出
-    answerInput.addEventListener("keypress", function(event) {
-        if (event.key === "Enter") {
-            checkAnswer();
-        }
-    });
+    function closeModal() {
+        modal.style.display = 'none';
+    }
 
-    // 切換玩家
     function switchPlayer() {
-        currentPlayer = currentPlayer === "X" ? "O" : "X";
-        statusDisplay.innerText = `玩家 ${currentPlayer} 的回合`;
-        statusDisplay.style.color = currentPlayer === "X" ? "#e74c3c" : "#2ecc71";
+        currentPlayer = currentPlayer === "O" ? "X" : "O";
+        updateStatus();
     }
 
-    // 判定勝負
     function checkResult() {
         let roundWon = false;
         for (let i = 0; i < winningConditions.length; i++) {
             const [a, b, c] = winningConditions[i];
-            if (boardState[a] === "" || boardState[b] === "" || boardState[c] === "") {
-                continue;
-            }
-            if (boardState[a] === boardState[b] && boardState[b] === boardState[c]) {
+            if (boardState[a] && boardState[a] === boardState[b] && boardState[a] === boardState[c]) {
                 roundWon = true;
                 break;
             }
         }
 
         if (roundWon) {
-            statusDisplay.innerText = `🎉 恭喜！玩家 ${currentPlayer} 獲勝！`;
+            statusText.innerText = `🏆 恭喜 Player ${currentPlayer === 'O' ? '1' : '2'} 獲勝！`;
+            playerColor.style.background = "#f1c40f"; // Gold
             gameActive = false;
             return;
         }
 
-        if (!boardState.includes("")) {
-            statusDisplay.innerText = "🤝 平手！";
+        if (!boardState.includes(null)) {
+            statusText.innerText = "🤝 平手！遊戲結束";
+            playerColor.style.background = "#95a5a6";
             gameActive = false;
             return;
         }
@@ -425,6 +474,5 @@
     initGame();
 
 </script>
-
 </body>
 </html>
